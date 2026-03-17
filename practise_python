@@ -1,0 +1,433 @@
+import os
+import pickle
+
+class Person:
+    def __init__(self, name):
+        self._name = name  
+    
+    def get_info(self):
+        return f"Человек: {self._name}"
+    
+class Books:
+    def __init__(self, name, author, isAvailiable):
+        self.__name = name 
+        self.__author = author  
+        self.__isAvailiable = isAvailiable  
+    
+    @property
+    def name(self):
+        return self.__name
+    
+    @property
+    def author(self):
+        return self.__author
+    
+    @property
+    def isAvailiable(self):
+        return self.__isAvailiable
+    
+    @isAvailiable.setter
+    def isAvailiable(self, value):
+        self.__isAvailiable = value
+
+class User(Person):
+    def __init__(self, userName):
+        super().__init__(userName) 
+        self.__borrowedBooksArray = []  
+    
+    def get_info(self):
+        return f"Пользователь: {self._name}, взято книг: {len(self.__borrowedBooksArray)}"
+    
+    @property
+    def borrowedBooksArray(self):
+        return self.__borrowedBooksArray
+    
+    @property
+    def userName(self):
+        return self._name
+    
+    def takeABook(self, book):
+        if book in self.__borrowedBooksArray:
+            print(f"Вы уже взяли книгу '{book.name}'.")
+            return False
+        
+        if book.isAvailiable:
+            self.__borrowedBooksArray.append(book)
+            book.isAvailiable = False
+            print(f'Пользователь {self._name} взял книгу "{book.name}"')
+            return True
+        else:
+            print(f'Книга "{book.name}" недоступна')
+            return False
+        
+    def returnBook(self, book):
+        if book in self.__borrowedBooksArray:
+            self.__borrowedBooksArray.remove(book)
+            book.isAvailiable = True
+            print(f'Пользователь {self._name} вернул книгу {book.name}')
+            return True
+        else:
+            print(f"Книга '{book.name}' не найдена у пользователя {self._name}")
+            return False
+
+    def borrowedBooksArrayInfo(self):
+        return self.__borrowedBooksArray
+
+class Librarian(Person):
+    def __init__(self, name):
+        super().__init__(name)  
+        self.__library_books = [] 
+        self.__users = []  
+    
+    def get_info(self):
+        return f"Библиотекарь: {self._name}, книг в фонде: {len(self.__library_books)}"
+    
+    @property
+    def library_books(self):
+        return self.__library_books
+    
+    @property
+    def users(self):
+        return self.__users
+    
+    @property
+    def name(self):
+        return self._name
+    
+    def save_data_pickle(self):
+        data = {
+            'library_books': self.__library_books,
+            'users': self.__users
+        }
+        
+        with open('library_data.pkl', 'wb') as file:
+            pickle.dump(data, file)
+        
+        print(f"Данные сохранены в файл library_data.pkl")
+        print(f"Сохранено книг: {len(self.__library_books)}")
+        print(f"Сохранено пользователей: {len(self.__users)}")
+    
+    def load_data_pickle(self):
+        if os.path.exists('library_data.pkl'):
+            try:
+                with open('library_data.pkl', 'rb') as file:
+                    data = pickle.load(file)
+                
+                self.__library_books = data['library_books']
+                self.__users = data['users']
+                
+                for user in self.__users:
+                    for book in user.borrowedBooksArray:
+                        for lib_book in self.__library_books:
+                            if lib_book.name == book.name and lib_book.author == book.author:
+                                index = user.borrowedBooksArray.index(book)
+                                user.borrowedBooksArray[index] = lib_book
+                                break
+                
+                print(f"Данные загружены из library_data.pkl")
+                print(f"Загружено книг: {len(self.__library_books)}")
+                print(f"Загружено пользователей: {len(self.__users)}")
+                return True
+            except Exception as e:
+                print(f"Ошибка при загрузке данных через pickle: {e}")
+                return False
+        else:
+            print("Файл library_data.pkl не найден")
+            return False
+
+    def findBookByName(self, book_name):
+        for book in self.__library_books:
+            if book.name == book_name:
+                return book
+        return None
+
+    def newBook(self, name, author, isAvailiable = True):
+        new_book = Books(name, author, isAvailiable)
+        self.__library_books.append(new_book)
+        return new_book
+    
+    def deleteBook(self, book):
+        if book in self.__library_books:
+            self.__library_books.remove(book)
+            print(f"Книга '{book.name}' была удалена")
+            return True
+        else:
+            print(f"Книга '{book.name}' не была удалена, так как ее нету в списке добавленных")
+            return False
+    
+    def allBooks(self):
+        return self.__library_books
+    
+    def newUser(self, userName):
+        new_User = User(userName)
+        self.__users.append(new_User)
+        return f"был создан пользователь с именем {userName}"
+    
+    def allUsers(self):
+        return self.__users
+
+def main_menu():
+    print("Главное меню программы")
+    print("1: Библиотекарь")
+    print("2: Пользователь")
+    print("3: Выход")
+
+    choice = input("Введите ваш выбор (1-3): ")
+    return choice
+
+def librarian_menu(librarian):
+    while True:
+        print(f"Меню библиотекаря ({librarian.name})\n")
+        print(f"{librarian.get_info()}\n") 
+        print("1. Добавить новую книгу")
+        print("2. Удалить книгу")
+        print("3. Зарегистрировать нового пользователя")
+        print("4. Просмотреть всех пользователей")
+        print("5. Просмотреть все книги")
+        print("6. Вернуться в главное меню")
+        print("7. Загрузить данные (pickle)")
+        print("8. Сохранить данные (pickle)")
+        
+        choice = input("Выберите действие (1-8): ")
+        
+        if choice == "1":
+            name = input("Название книги: ")
+            author = input("Автор: ")
+            librarian.newBook(name, author)
+            print(f'Книга "{name}" добавлена')
+            
+        elif choice == "2":
+            print("Доступные книги:")
+            
+            books = librarian.allBooks()
+            if not books:
+                print("В библиотеке нет книг.")
+                continue
+                
+            for i in range(len(books)):
+                book = books[i]
+                status = "доступна" if book.isAvailiable else "выдана" 
+                print(f"{i+1}. {book.name} - {book.author} [{status}]")
+            
+            try:
+                user_input = input("Номер книги для удаления: ")
+                index = int(user_input) - 1
+                
+                if 0 <= index < len(books):
+                    book = books[index]
+                    
+                    if not book.isAvailiable:
+                        print(f"Книга '{book.name}' в данный момент выдана пользователю.")
+                        print("Сначала нужно вернуть книгу или найти другую копию.")
+                        confirm = input("Все равно удалить? (да/нет): ").lower().strip()
+                        if confirm != 'да':
+                            print("Удаление отменено.")
+                            continue
+                    
+                    librarian.deleteBook(book)
+                    
+                else:
+                    print("Неверный номер книги")
+                    
+            except ValueError:
+                print("Пожалуйста, введите число")
+                
+        elif choice == "3":
+            userName = input("Имя нового пользователя: ")
+            result = librarian.newUser(userName)
+            print(result)
+            
+        elif choice == "4":
+            print("\nСписок пользователей")
+            users = librarian.allUsers()
+            
+            if not users:
+                print("Нет зарегистрированных пользователей")
+            else:
+                for i in range(len(users)):
+                    user = users[i]
+                    print(f"{i+1}. {user.get_info()}")
+                    if user.borrowedBooksArray:
+                        print("   Взятые книги: " + ", ".join([book.name for book in user.borrowedBooksArray]))
+                
+        elif choice == "5":
+            print("\nВсе книги")
+            books = librarian.allBooks()
+            
+            if not books:
+                print("В библиотеке нет книг")
+            else:
+                for i in range(len(books)):
+                    book = books[i]
+                    status = "доступна" if book.isAvailiable else "выдана"  
+                    print(f"{i+1}. {book.name} - {book.author} [{status}]")
+                
+        elif choice == "6":
+            break
+        
+        elif choice == "7":
+            librarian.load_data_pickle()
+        
+        elif choice == "8":
+            librarian.save_data_pickle()
+            
+        else:
+            print("Неверный выбор. Пожалуйста, выберите от 1 до 8")
+
+def user_menu(librarian):
+    print("\nВыбор пользователей")
+    users = librarian.allUsers()
+    
+    if not users:
+        print("Нет зарегистрированных пользователей. Обратитесь к библиотекарю.")
+        return
+    
+    for i in range(len(users)):
+        user = users[i]
+        print(f"{i+1}. {user.get_info()}")  
+    
+    try:
+        user_input = input("Ваш номер: ")
+        index = int(user_input) - 1
+        
+        if index < 0 or index >= len(users):
+            print("Неверный номер")
+            return
+            
+        current_user = users[index]
+        
+    except ValueError:
+        print("Пожалуйста, введите число")
+        return
+    
+    while True:
+        print(f"Меню пользователя: {current_user.userName}\n")
+        print(f"{current_user.get_info()}\n") 
+        print("1. Просмотреть доступные книги")
+        print("2. Взять книгу")
+        print("3. Вернуть книгу")
+        print("4. Мои книги")
+        print("5. Сменить пользователя")
+        print("6. Выйти")
+        
+        choice = input("Выберите действие (1-6): ")
+        
+        if choice == "1":
+            print("\nДоступные книги")
+            all_books = librarian.allBooks()
+            available_books = []
+            
+            for book in all_books:
+                if book.isAvailiable:
+                    available_books.append(book)
+            
+            if len(available_books) == 0:
+                print("Нет доступных книг")
+            else:
+                for i in range(len(available_books)):
+                    book = available_books[i]
+                    print(f"{i+1}. {book.name} - {book.author}")
+                    
+        elif choice == "2":
+            print("\nВзять книгу")
+            all_books = librarian.allBooks()
+            available_books = []
+            
+            for book in all_books:
+                if book.isAvailiable:
+                    available_books.append(book)
+            
+            if len(available_books) == 0:
+                print("Нет доступных книг")
+                continue
+                
+            for i in range(len(available_books)):
+                book = available_books[i]
+                print(f"{i+1}. {book.name} - {book.author}")
+            
+            try:
+                user_input = input("Номер книги: ")
+                index = int(user_input) - 1
+                
+                if index >= 0 and index < len(available_books):
+                    book = available_books[index]
+                    current_user.takeABook(book)
+                else:
+                    print("Неверный номер книги")
+                    
+            except ValueError:
+                print("Пожалуйста, введите число")
+                
+        elif choice == "3":
+            print("\nВернуть книгу")
+            my_books = current_user.borrowedBooksArrayInfo()
+            
+            if len(my_books) == 0:
+                print("У вас нет книг")
+                continue
+                
+            for i in range(len(my_books)):
+                book = my_books[i]
+                print(f"{i+1}. {book.name} - {book.author}")
+            
+            try:
+                user_input = input("Номер книги для возврата: ")
+                index = int(user_input) - 1
+                
+                if index >= 0 and index < len(my_books):
+                    book = my_books[index]
+                    current_user.returnBook(book)
+                else:
+                    print("Неверный номер книги")
+                    
+            except ValueError:
+                print("Пожалуйста, введите число")
+                
+        elif choice == "4":
+            print(f"\nМои книги")
+            my_books = current_user.borrowedBooksArrayInfo()
+            
+            if len(my_books) == 0:
+                print("У вас нет книг")
+            else:
+                for i in range(len(my_books)):
+                    book = my_books[i]
+                    print(f"{i+1}. {book.name} - {book.author}")
+                    
+        elif choice == "5":
+            return
+            
+        elif choice == "6":
+            return
+            
+        else:
+            print("Неверный выбор. Пожалуйста, выберите от 1 до 6")
+
+def main():
+    librarian = Librarian("Главный библиотекарь")
+
+    print("Загрузка данных")
+    librarian.load_data_pickle()
+    
+    try:
+        while True:
+            choice = main_menu()
+            
+            if choice == "1":
+                librarian_menu(librarian)
+            elif choice == "2":
+                user_menu(librarian)
+            elif choice == "3":
+                print("Сохранение данных перед выходом...")
+                librarian.save_data_pickle()
+                print("До свидания!")
+                break
+            else:
+                print("Неверный выбор")
+    except KeyboardInterrupt:
+        print("\nСохранение данных перед выходом...")
+        librarian.save_data_pickle()
+        print("До свидания!")
+
+if __name__ == "__main__":
+    main()
